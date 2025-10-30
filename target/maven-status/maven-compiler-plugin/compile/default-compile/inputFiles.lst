@@ -1,0 +1,9 @@
+/home/warmachine/eclipse-workspace/demo/src/main/java/com/Machine/demo/TradingMachineApplication.java
+/home/warmachine/eclipse-workspace/demo/src/main/java/com/Machine/demo/controller/TradingViewController.java
+/home/warmachine/eclipse-workspace/demo/src/main/java/com/Machine/demo/model/AnalizadorTecnico.java
+/home/warmachine/eclipse-workspace/demo/src/main/java/com/Machine/demo/model/GroqErrorLog.java
+/home/warmachine/eclipse-workspace/demo/src/main/java/com/Machine/demo/model/SignalLog.java
+/home/warmachine/eclipse-workspace/demo/src/main/java/com/Machine/demo/repository/GroqErrorLogRepository.java
+/home/warmachine/eclipse-workspace/demo/src/main/java/com/Machine/demo/repository/SignalLogRepository.java
+/home/warmachine/eclipse-workspace/demo/src/main/java/com/Machine/demo/service/GroqService.java
+/home/warmachine/eclipse-workspace/demo/src/main/java/com/Machine/demo/service/OpenAiServiceWrapper.java

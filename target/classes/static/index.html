@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradingMachine Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+
+<header class="bg-blue-600 text-white p-4 shadow">
+    <h1 class="text-2xl font-bold">TradingMachine Dashboard</h1>
+</header>
+
+<main class="p-4 grid gap-6 md:grid-cols-2">
+
+    <!-- Formulario de simulación -->
+    <section class="bg-white p-4 rounded shadow">
+        <h2 class="text-xl font-semibold mb-2">Simular señal</h2>
+        <form id="signalForm" class="flex flex-col gap-2">
+            <input type="text" id="symbol" placeholder="Símbolo (BTCUSDT)" class="p-2 border rounded w-full">
+            <select id="signal" class="p-2 border rounded w-full">
+                <option value="LONG">LONG</option>
+                <option value="SHORT">SHORT</option>
+                <option value="WAIT">WAIT</option>
+            </select>
+            <button type="submit" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 mt-2">Enviar</button>
+        </form>
+        <p id="formMessage" class="mt-2 text-green-600"></p>
+    </section>
+
+    <!-- Gráfico de señales -->
+    <section class="bg-white p-4 rounded shadow">
+        <h2 class="text-xl font-semibold mb-2">Resumen de señales</h2>
+        <canvas id="signalChart" height="200"></canvas>
+    </section>
+
+    <!-- Tabla de señales -->
+    <section class="bg-white p-4 rounded shadow md:col-span-2">
+        <h2 class="text-xl font-semibold mb-2">Señales recientes</h2>
+        <table class="min-w-full border rounded">
+            <thead class="bg-gray-200">
+                <tr>
+                    <th class="py-2 px-4 text-left">#</th>
+                    <th class="py-2 px-4 text-left">Símbolo</th>
+                    <th class="py-2 px-4 text-left">Señal</th>
+                    <th class="py-2 px-4 text-left">Timestamp</th>
+                    <th class="py-2 px-4 text-left">Decisión</th>
+                </tr>
+            </thead>
+            <tbody id="signalTable"></tbody>
+        </table>
+    </section>
+
+    <!-- Log de operaciones -->
+    <section class="bg-white p-4 rounded shadow md:col-span-2">
+        <h2 class="text-xl font-semibold mb-2">Log de operaciones</h2>
+        <div id="operationLog" class="h-48 overflow-y-auto bg-gray-50 p-2 rounded border"></div>
+    </section>
+
+</main>
+
+<script>
+const apiBase = '/api/tradingview'; // Cambia según tu endpoint
+let chart;
+
+// Función para cargar señales recientes y actualizar tabla y gráfico
+async function loadSignals() {
+    try {
+        const res = await fetch(`${apiBase}/signals`);
+        const data = await res.json();
+
+        // Tabla
+        const table = document.getElementById('signalTable');
+        table.innerHTML = '';
+        data.forEach((signal, index) => {
+            const row = document.createElement('tr');
+            row.className = 'border-b hover:bg-gray-50';
+            let color = 'text-gray-800';
+            if (signal.signal === 'LONG') color = 'text-green-600 font-bold';
+            else if (signal.signal === 'SHORT') color = 'text-red-600 font-bold';
+            else if (signal.signal === 'WAIT') color = 'text-yellow-600 font-bold';
+            row.innerHTML = `
+                <td class="py-2 px-4">${index+1}</td>
+                <td class="py-2 px-4">${signal.symbol}</td>
+                <td class="py-2 px-4 ${color}">${signal.signal_name}</td>
+                <td class="py-2 px-4">${new Date(signal.signal_timestamp).toLocaleString()}</td>
+                <td class="py-2 px-4">${signal.decision || '-'}</td>
+            `;
+            table.appendChild(row);
+        });
+
+        // Gráfico
+        const counts = { LONG: 0, SHORT: 0, WAIT: 0 };
+        data.forEach(s => counts[s.signal] = (counts[s.signal] || 0) + 1);
+        const ctx = document.getElementById('signalChart').getContext('2d');
+        if (!chart) {
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['LONG', 'SHORT', 'WAIT'],
+                    datasets: [{
+                        label: 'Cantidad de señales',
+                        data: [counts.LONG, counts.SHORT, counts.WAIT],
+                        backgroundColor: ['#16a34a', '#dc2626', '#eab308']
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+        } else {
+            chart.data.datasets[0].data = [counts.LONG, counts.SHORT, counts.WAIT];
+            chart.update();
+        }
+
+    } catch (err) {
+        console.error('Error cargando señales:', err);
+    }
+}
+
+// Función para enviar señal simulada
+document.getElementById('signalForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const symbol = document.getElementById('symbol').value.trim();
+    const signal = document.getElementById('signal').value;
+    if (!symbol) return;
+
+    try {
+        const res = await fetch(`${apiBase}/webhook`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ symbol, signal, timeframe: '1h' })
+        });
+        const result = await res.json();
+        document.getElementById('formMessage').innerText = `✅ Señal enviada: ${result.decision}`;
+
+        // Log
+        const logDiv = document.getElementById('operationLog');
+        const logEntry = document.createElement('div');
+        logEntry.innerText = `[${new Date().toLocaleTimeString()}] ${symbol} -> ${signal} (${result.decision})`;
+        logDiv.prepend(logEntry);
+
+        loadSignals(); // actualizar tabla y gráfico
+    } catch (err) {
+        console.error(err);
+        document.getElementById('formMessage').innerText = '⚠ Error al enviar señal';
+    }
+});
+
+// Actualizar automáticamente cada 10 segundos
+loadSignals();
+setInterval(loadSignals, 10000);
+</script>
+
+</body>
+</html>
