@@ -1,7 +1,18 @@
 services:
   - type: web
     name: TradingMachine
-    env: java
-    buildCommand: "./mvnw clean package -DskipTests"
-    startCommand: "java -jar target/*.jar"
-    plan: free
+    env: docker
+    plan: starter          # Puedes cambiar a 'standard' o 'pro' según tu necesidad
+    branch: main           # La rama de Git que Render usará
+    dockerfilePath: Dockerfile
+    autoDeploy: true       # Cada push a 'main' redeployará automáticamente
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: GROQ_API_KEY
+        fromSecret: groq_api_key_secret   # Define tu secreto en Render
+    healthCheckPath: /actuator/health   # Opcional si usas Spring Actuator
+    instances: 1
+    regions:
+      - oregon       # Cambia a la región que prefieras
+
